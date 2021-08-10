@@ -1,6 +1,10 @@
 integer finalized = FALSE;
 integer gListener;
 
+
+integer LINK = 0;
+integer FACE = 0;
+
 default
 {
     state_entry()
@@ -49,7 +53,7 @@ default
                 string texture = llGetInventoryName(INVENTORY_TEXTURE, i);
                 key texture_key = llGetInventoryKey(texture);
                 llRemoveInventory(texture);
-                llSetLinkTexture(LINK_ROOT, texture_key, 1);
+                llSetLinkTexture(LINK, texture_key, FACE);
                 
             }
         }   
