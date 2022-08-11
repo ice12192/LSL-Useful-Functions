@@ -1,0 +1,129 @@
+list MENU = [];
+
+integer listener;
+integer MENU_CHANNEL = 1000;
+
+integer page_index = 0;
+string security_group = "GROUP";
+
+list show_page(integer index)
+{
+    
+    list menu;
+    
+    integer count = llGetInventoryNumber(INVENTORY_OBJECT);
+    integer max_pages = llCeil(count/9.0);
+    if(index > max_pages) { index = 0; page_index = 0; }
+    if(index < 0) { index = max_pages; page_index = max_pages; }
+    
+    integer i = index * 9;
+    
+    for(i; i<count; i++){
+        string name = llGetInventoryName(INVENTORY_OBJECT, i);
+        name = llGetSubString((string)(i+1) + ". " + name, 0, 23);
+        menu += [name];
+        if(llGetListLength(menu) == 9){
+            jump done;
+        }
+    }
+    @done;
+    return menu;
+}
+
+Dialog(key id, list menu)
+{
+    llListenRemove(listener);
+    listener = llListen(MENU_CHANNEL, "", NULL_KEY, "");
+    llDialog(id, "Select one object below: ", menu, MENU_CHANNEL);
+}
+
+integer is_allowed(key id)
+{
+    if(id == llGetOwner()) return TRUE;
+    if(security_group == "GROUP"){
+        if(llSameGroup(id)) return TRUE;
+    }
+    if(security_group == "PUBLIC"){
+        return TRUE;
+    }
+    return FALSE;
+}
+
+default
+{
+    on_rez(integer num)
+    {
+        llResetScript();
+    }
+    
+    touch_start(integer total_number)
+    { 
+        if(is_allowed(llDetectedKey(0))){
+            llListenRemove(listener);
+            listener = llListen(MENU_CHANNEL, "", NULL_KEY, "");
+            list menu = ["Settings", "Contents", "Close"];
+            llDialog(llDetectedKey(0), "Choose an option: ", menu, MENU_CHANNEL);
+        } else {
+            llInstantMessage(llDetectedKey(0), "You are not allowed to use this item.");
+        }        
+    }
+    
+    listen(integer channel, string name, key id, string message) 
+    {
+        if(!is_allowed(id)){
+            return;
+        }
+        if (channel == MENU_CHANNEL)
+        {
+            
+            llListenRemove(listener);  
+            if(id == llGetOwner()){
+                if(message == "Settings"){
+                    listener = llListen(MENU_CHANNEL, "", NULL_KEY, "");
+                    list menu = ["Public", "Group", "Private"];
+                    llDialog(id, "Choose your security option: ", menu, MENU_CHANNEL);
+                }
+                else if(message == "Public"){
+                    security_group = "PUBLIC";
+                } else if(message == "Group"){
+                    security_group = "GROUP";
+                } else if(message == "Private"){
+                    security_group = "PRIVATE";
+                }
+            }
+            else if (message == "Contents")
+            {
+                page_index = 0;
+                MENU = ["<<", "CLOSE", ">>"];
+                MENU += show_page(page_index);
+                Dialog(id, MENU);
+            }
+            else if (message == ">>")
+            {
+                page_index++;
+                MENU = ["<<", "CLOSE", ">>"];
+                MENU += show_page(page_index);
+                listener = llListen(MENU_CHANNEL, "", NULL_KEY, "");
+                llDialog(id, "Select one object below: ", MENU, MENU_CHANNEL);
+            }
+            else if (message == "<<")
+            {
+                page_index--;
+                MENU = ["<<", "CLOSE", ">>"];
+                MENU += show_page(page_index);
+                listener = llListen(MENU_CHANNEL, "", NULL_KEY, "");
+                llDialog(id, "Select one object below: ", MENU, MENU_CHANNEL);
+            }        
+            else                    
+            {
+                integer split_index = llSubStringIndex(message, ". ");
+                integer item_index = (integer)llGetSubString(message, 0, split_index-1);
+                if(item_index > 0){
+                    item_index--;
+                    string item_name = llGetInventoryName(INVENTORY_OBJECT, item_index);
+                    llGiveInventory(id, item_name);
+                }
+            }      
+        }
+    }  
+}
