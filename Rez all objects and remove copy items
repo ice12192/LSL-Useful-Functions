@@ -1,0 +1,23 @@
+default
+{
+  state_enter()
+  {
+    // Rez all objects in inventory
+    integer numObjects = llGetInventoryNumber(INVENTORY_OBJECT);
+
+    while (numObjects > 0) {
+        string name = llGetInventoryName(INVENTORY_OBJECT, 0);
+        llRezObject(name, ZERO_VECTOR, ZERO_ROTATION, 0);
+
+        // Delete any copyable items
+        integer perms = llGetInventoryPermMask(name, MASK_COPY);
+
+        if (perms & PERM_COPY) {
+            llRemoveInventory(name);
+        }
+
+        // Update inventory count
+        numObjects = llGetInventoryNumber(INVENTORY_OBJECT);
+    }
+  }
+}
